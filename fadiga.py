@@ -2,6 +2,7 @@ from scipy.spatial import distance as dist
 from imutils.video import VideoStream
 from imutils import face_utils
 from threading import Thread
+from smbus2 import SMBus
 import numpy as np
 import playsound
 import imutils
@@ -9,6 +10,10 @@ import time
 import dlib
 import cv2
 import matplotlib.pyplot as plt
+
+
+addr = 0x8 # bus address
+bus = SMBus(1) # indicates /dev/ic2-1
 
 
 # Definir constantes
@@ -24,7 +29,15 @@ def sound_alarm(path=ALARME):
     # Tocar som de alarme
     playsound.playsound(ALARME)
 
-#A CONTAGEM COMEÇA NO 0!!!!
+
+def get_nose_landmarks(shape):
+
+    nose_landmark = shape.part(30)
+    return nose_landmark.x, nose_landmark.y
+
+# A CONTAGEM COMEÇA NO 0!!!!
+
+
 def eye_aspect_ratio(eye):
     # Calcula a distancia euclidiana entre as landmarks dos olhos na vertical (x, y)
     A = dist.euclidean(eye[1], eye[5])
@@ -59,6 +72,8 @@ x = np.arange(0, 100)
 fig = plt.figure()
 ax = fig.add_subplot(111)
 li, = ax.plot(x, y)
+plt.xlim([0, 100])
+plt.ylim([0, 0.4])
 
 # Loop sobre os frames do vídeo
 while True:
@@ -67,12 +82,13 @@ while True:
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
     # Detectar faces (grayscale)
-    rects = detector(gray, 0)
+    faces = detector(gray, 0)
 
     # Loop nas detecções de faces
-    for rect in rects:
-        shape = predictor(gray, rect)
+    for face in faces:
+        shape = predictor(gray, face)
         shape = face_utils.shape_to_np(shape)
+        nareba = predictor(gray, face)
 
         # Extrai coordenadas dos olhos e calcular a proporção de abertura
         leftEye = shape[lStart:lEnd]
@@ -89,21 +105,29 @@ while True:
         cv2.drawContours(frame, [leftEyeHull], -1, (0, 255, 0), 1)
         cv2.drawContours(frame, [rightEyeHull], -1, (0, 255, 0), 1)
 
+        nose_x, nose_y = get_nose_landmarks(nareba)
+        cv2.circle(frame, (nose_x, nose_y), 5, (0, 255, 0), -1)
+        print(f"Coordenadas do Nariz - X: {nose_x}, Y: {nose_y}")
+
+        if (nose_x-270)>0 :
+            bus.write_byte(addr, 0x2)
+        elif (nose_x-230)<0 :
+            bus.write_byte(addr, 0x1)
+        elif (nose_y-190)>0 :
+            bus.write_byte(addr, 0x3)
+        elif (nose_y-150)>0 :
+            bus.write_byte(addr, 0x4)
+        else:
+            bus.write_byte(addr, 0x0)
 
         # Salvar historico para plot
         y.pop(0)
         y.append(ear)
 
         # Atualizar canvas
-        plt.xlim([0, 100])
-        plt.ylim([0, 0.4])
-        ax.relim()
-        ax.autoscale_view(True, True, True)
-        fig.canvas.draw()
-        plt.show(block=False)
         li.set_ydata(y)
         fig.canvas.draw()
-        time.sleep(0.01)
+        plt.pause(0.01)
 
         # Checar proporção x threshold(limite)
         if ear < EYE_AR_THRESH:
