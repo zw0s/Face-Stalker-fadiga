@@ -1,1 +1,3 @@
 # Face Stalker fadiga
+
+O Face Stalker fadiga foi um projeto desenvolvido para a disciplina Engenharia Unificada em colaboração do https://github.com/FOGUETE-1995 a fim de prevenir acidentes adivindo do cansaço, o projeto consiste em um dispositivo que localiza o rosto atráves de um modelo já treinado e utiliza um ponto central (utilizamos o nariz) para se basear e seguir o rosto, assim que ele encontra um rosto ele identifica 68 pontos faciais e começa a monitorar a distância entre as pálpebras, se a distância entre os pontos superiores e inferiores das pálpebras for menor que a constante que definimos por um certo tempo ela emite um alerta na tela e um sinal sonoro.
